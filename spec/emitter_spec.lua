@@ -30,5 +30,44 @@ describe('The emitter module',function()
             end)
         end
         
+        it('i.addlistener and i.on are the same method',function()
+            assert.is_equal(i.addlistener,i.on)
+          end)
+        
+        it('i.on callback gets called with correct arguments',function(done)
+            i:on('foo',async(function(a,b)
+                  assert.is_equal(a,'test')
+                  assert.is_equal(b,123)
+                  done()
+              end))
+            i:emit('foo','test',123)
+          end)
+        
+        it('emitter.nexttick works',function(done)
+            emitter.nexttick(function()
+                i:emit('foo','test',123)
+              end)
+            i:on('foo',async(function(a,b)
+                  assert.is_equal(a,'test')
+                  assert.is_equal(b,123)
+                  done()
+              end))
+          end)
+        
+        
+        it('the call context for nexttick and on callbacks is different',function(done)
+            local s = 1
+            emitter.nexttick(function()
+                i:emit('foo')
+              end)
+            i:on('foo',async(function()
+                  assert.is_equal(s,2)
+                  done()
+              end))
+            s = 2
+          end)
+        
+        
+        
       end)
   end)

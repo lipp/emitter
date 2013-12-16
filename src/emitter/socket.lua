@@ -33,10 +33,51 @@ local new = function()
   local connecting = false
   local closing = false
   local watchers = {}
+  
+  local read = function()
+    assert(sock)
+    watchers.read = ev.IO.new(function()
+        local data,err,part = sock:receive(8192)
+        if err then
+          self:emit('error',err)
+          self:emit('close')
+          self:destroy()
+        else
+          self:emit('data',data or part)
+        end
+      end,sock:getfd(),ev.READ)
+    self:resume()
+  end
+  
+  local pending
+  local pos
+  
+  local write = function()
+    assert(sock)
+    watchers.write = ev.IO.new(function(loop,io)
+        local sent,err,so_far = sock:send(pending,pos)
+        if not sent and err ~= 'timeout' then
+          if err ~= 'closed' then
+            self:emit('error',err)
+          end
+          self:emit('close')
+          self:destroy()
+        elseif sent then
+          pos = nil
+          pending = nil
+          io:stop(loop)
+          self:emit('drain')
+        else
+          pos = so_far + 1
+        end
+      end,sock:getfd(),ev.WRITE)
+  end
+  
   self.connect = function(_,port,ip)
     ip = ip or 'localhost'
     if not isip(ip) then
-      error('invalid ip')
+      self:emit('error',err)
+      self:emit('close')
     end
     if sock and closing then
       self:once('close',function(self)
@@ -60,19 +101,44 @@ local new = function()
     closing = false
     local ok,err = sock:connect(ip,port)
     if ok or err == 'already connected' then
+      read()
+      write()
       self:emit('connect',self)
     elseif err == 'timeout' or err == 'Operation already in progress' then
       watchers.connect = ev.IO.new(function(loop,io)
           io:stop(loop)
+          watchers.connect = nil
+          read()
+          write()
           self:emit('connect',self)
         end,sock:getfd(),ev.WRITE)
       watchers.connect:start(loop)
     else
       self:emit('error',err)
+      self:emit('close')
+      self:destroy()
     end
   end
-  self.write = function() end
-  self.fin = function() end
+  
+  self.write = function(_,data)
+    if pending then
+      pending = pending..data
+    else
+      pending = data
+      watchers.write:start(loop)
+    end
+  end
+  
+  self.fin = function()
+    if pending then
+      self:once('drain',function()
+          sock:shutdown('send')
+        end)
+    else
+      sock:shutdown('send')
+    end
+  end
+  
   self.destroy = function()
     for _,watcher in pairs(watchers) do
       watcher:stop(loop)
@@ -82,8 +148,15 @@ local new = function()
       sock = nil
     end
   end
-  self.pause = function() end
-  self.resume = function() end
+  
+  self.pause = function()
+    watchers.read:stop(loop)
+  end
+  
+  self.resume = function()
+    watchers.read:start(loop)
+  end
+  
   self.set_timeout = function() end
   self.set_keepalive = function() end
   self.set_nodelay = function() end

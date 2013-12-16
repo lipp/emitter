@@ -35,36 +35,60 @@ local create_next_tick = function(loop)
   end
 end
 
-local new = function(loop)
+local new = function()
   local self = {}
   local listeners = {}
+  local max_listeners = 10
   
-  self.addlistener = function(_,event,listener)
+  self.add_listener = function(_,event,listener)
     listeners[event] = listeners[event] or {}
+    if #listeners[event] > max_listeners then
+      error('max_listeners limit reached for event '..event)
+    end
     tinsert(listeners[event],listener)
+    return self
   end
   
-  self.on = self.addlistener
+  self.on = self.add_listener
   
-  self.removelistener = function(_,event,oldlistener)
+  self.remove_listener = function(_,event,oldlistener)
     if listeners[event] then
       for i,listener in ipairs(listeners[event]) do
         if listener == oldlistener then
           tremove(listeners[event],i)
-          return
+          return self
         end
       end
     end
+    return self
   end
   
-  self.once = function(self,event,listener)
+  local remove_all_listeners_for_event = function(event)
+    for _,listener in ipairs(listeners[event] or {}) do
+      self:remove_listener(listener)
+    end
+  end
+  
+  self.remove_all_listeners = function(_,event)
+    if event then
+      remove_all_listeners_for_event(event)
+    else
+      for event in pairs(listeners) do
+        remove_all_listeners_for_event(event)
+      end
+    end
+    return self
+  end
+  
+  self.once = function(_,event,listener)
     local remove
     remove = function()
-      self:removelistener(event,remove)
-      self:removelistener(event,listener)
+      self:remove_listener(event,remove)
+      self:remove_listener(event,listener)
     end
-    self:addlistener(event,listener)
-    self:addlistener(event,remove)
+    self:add_listener(event,listener)
+    self:add_listener(event,remove)
+    return self
   end
   
   self.emit = function(_,event,...)
@@ -74,6 +98,7 @@ local new = function(loop)
         print('error in listener',err)
       end
     end
+    return self
   end
   
   return self
@@ -81,5 +106,5 @@ end
 
 return {
   new = new,
-  nexttick = create_next_tick(ev.Loop.default),
+  next_tick = create_next_tick(ev.Loop.default),
 }

@@ -17,10 +17,10 @@ describe('The emitter module',function()
           end)
         
         local expected_methods = {
-          'addlistener',
+          'add_listener',
           'on',
           'once',
-          'removelistener',
+          'remove_listener',
           'emit',
         }
         
@@ -30,8 +30,8 @@ describe('The emitter module',function()
             end)
         end
         
-        it('i.addlistener and i.on are the same method',function()
-            assert.is_equal(i.addlistener,i.on)
+        it('i.add_listener and i.on are the same method',function()
+            assert.is_equal(i.add_listener,i.on)
           end)
         
         it('i.on callback gets called with correct arguments',function(done)
@@ -43,8 +43,8 @@ describe('The emitter module',function()
             i:emit('foo','test',123)
           end)
         
-        it('emitter.nexttick works',function(done)
-            emitter.nexttick(function()
+        it('emitter.next_tick works',function(done)
+            emitter.next_tick(function()
                 i:emit('foo','test',123)
               end)
             i:on('foo',async(function(a,b)
@@ -57,7 +57,7 @@ describe('The emitter module',function()
         
         it('the call context for nexttick and on callbacks is different',function(done)
             local s = 1
-            emitter.nexttick(function()
+            emitter.next_tick(function()
                 i:emit('foo')
               end)
             i:on('foo',async(function()

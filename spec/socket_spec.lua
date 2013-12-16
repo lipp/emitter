@@ -23,13 +23,13 @@ describe('The emitter.socket module',function()
           'destroy',
           'pause',
           'resume',
-          'settimeout',
-          'setnodelay',
-          'setkeepalive',
+          'set_timeout',
+          'set_nodelay',
+          'set_keepalive',
           'on',
           'once',
-          'addlistener',
-          'removelistener',
+          'add_listener',
+          'remove_listener',
         }
         
         for _,method in ipairs(expected_methods) do

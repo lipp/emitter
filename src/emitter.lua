@@ -24,8 +24,9 @@ local create_next_tick = function(loop)
         once = true
         timer_io:stop(loop)
         on_timeout()
-      end,eps)
+      end,eps,eps)
     return function(f)
+      on_timeout = f
       if once then
         timer_io:again(loop)
       else

@@ -32,8 +32,8 @@ local new = function()
   local loop = ev.Loop.default
   local connecting = false
   local closing = false
-  local watcher = {}
-  self.connect = function(port,ip)
+  local watchers = {}
+  self.connect = function(_,port,ip)
     ip = ip or 'localhost'
     if not isip(ip) then
       error('invalid ip')
@@ -48,7 +48,7 @@ local new = function()
     end
   end
   
-  self._connect = function(port,ip)
+  self._connect = function(_,port,ip)
     assert(not sock)
     if isipv6(ip) then
       sock = socket.tcp6()
@@ -62,18 +62,26 @@ local new = function()
     if ok or err == 'already connected' then
       self:emit('connect',self)
     elseif err == 'timeout' or err == 'Operation already in progress' then
-      watcher.connect = ev.IO.new(function(loop,io)
+      watchers.connect = ev.IO.new(function(loop,io)
           io:stop(loop)
           self:emit('connect',self)
         end,sock:getfd(),ev.WRITE)
-      watcher.connect:start(loop)
+      watchers.connect:start(loop)
     else
       self:emit('error',err)
     end
   end
   self.write = function() end
   self.fin = function() end
-  self.destroy = function() end
+  self.destroy = function()
+    for _,watcher in pairs(watchers) do
+      watcher:stop(loop)
+    end
+    if sock then
+      sock:close()
+      sock = nil
+    end
+  end
   self.pause = function() end
   self.resume = function() end
   self.set_timeout = function() end

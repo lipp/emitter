@@ -16,6 +16,10 @@ describe('The emitter.socket module',function()
             i = esock.new()
           end)
         
+        after_each(function()
+            i:destroy()
+          end)
+        
         local expected_methods = {
           'connect',
           'write',
@@ -38,6 +42,13 @@ describe('The emitter.socket module',function()
             end)
         end
         
+        it('can connect to www.google.com',function(done)
+            i:on('connect',async(function(j)
+                  assert.is_same(i,j)
+                  done()
+              end))
+            i:connect(80,'www.google.com')
+          end)
         
       end)
   end)

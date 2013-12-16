@@ -92,11 +92,19 @@ local new = function()
     return self
   end
   
+  local emit_listeners = {}
+  
   self.emit = function(_,event,...)
-    for _,listener in ipairs(listeners[event] or {}) do
-      local ok,err = pcall(listener,...)
-      if not ok then
-        print('error in listener',err)
+    local listeners = listeners[event]
+    if listeners then
+      for i,listener in ipairs(listeners) do
+        emit_listeners[i] = listener
+      end
+      for i=1,#listeners do
+        local ok,err = pcall(emit_listeners[i],...)
+        if not ok then
+          print('error in listener',err)
+        end
       end
     end
     return self

@@ -43,6 +43,18 @@ describe('The emitter module',function()
             i:emit('foo','test',123)
           end)
         
+        it('i.on callback gets called once for each emit',function(done)
+            local count = 0
+            i:on('foo',async(function()
+                  count = count + 1
+                  if count == 2 then
+                    done()
+                  end
+              end))
+            i:emit('foo')
+            i:emit('foo')
+          end)
+        
         it('emitter.next_tick works',function(done)
             emitter.next_tick(function()
                 i:emit('foo','test',123)
@@ -54,8 +66,7 @@ describe('The emitter module',function()
               end))
           end)
         
-        
-        it('the call context for nexttick and on callbacks is different',function(done)
+        it('the call context for next_tick and on callbacks is different',function(done)
             local s = 1
             emitter.next_tick(function()
                 i:emit('foo')
@@ -67,7 +78,21 @@ describe('The emitter module',function()
             s = 2
           end)
         
-        
-        
+        it('once is really called once',function(done)
+            local count = 0
+            i:once('bar',async(function()
+                  count = count + 1
+              end))
+            local b = 0
+            i:on('bar',async(function()
+                  b = b + 1
+                  if b == 2 then
+                    assert.is_equal(count,1)
+                    done()
+                  end
+              end))
+            i:emit('bar',1)
+            i:emit('bar',2)
+          end)
       end)
   end)

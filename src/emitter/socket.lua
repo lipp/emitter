@@ -31,30 +31,34 @@ local new = function()
   local sock
   local loop = ev.Loop.default
   local connecting = false
+  local connected = false
   local closing = false
   local watchers = {}
   
-  local read = function()
+  local on_error = function(err)
+    self:emit('error',err)
+    self:emit('close')
+    self:destroy()
+  end
+  
+  local read_io = function()
     assert(sock)
-    watchers.read = ev.IO.new(function()
+    return ev.IO.new(function()
         local data,err,part = sock:receive(8192)
         if err then
-          self:emit('error',err)
-          self:emit('close')
-          self:destroy()
+          on_error(err)
         else
           self:emit('data',data or part)
         end
       end,sock:getfd(),ev.READ)
-    self:resume()
   end
   
   local pending
   local pos
   
-  local write = function()
+  local write_io = function()
     assert(sock)
-    watchers.write = ev.IO.new(function(loop,io)
+    return ev.IO.new(function(loop,io)
         local sent,err,so_far = sock:send(pending,pos)
         if not sent and err ~= 'timeout' then
           if err ~= 'closed' then
@@ -66,6 +70,7 @@ local new = function()
           pos = nil
           pending = nil
           io:stop(loop)
+          self:emit('_drain')
           self:emit('drain')
         else
           pos = so_far + 1
@@ -73,11 +78,19 @@ local new = function()
       end,sock:getfd(),ev.WRITE)
   end
   
+  local on_connect = function()
+    connecting = false
+    connected = true
+    watchers.read = read_io()
+    watchers.write = write_io()
+    self:resume()
+    self:emit('connect',self)
+  end
+  
   self.connect = function(_,port,ip)
-    ip = ip or 'localhost'
+    ip = ip or '127.0.0.1'
     if not isip(ip) then
-      self:emit('error',err)
-      self:emit('close')
+      on_error(err)
     end
     if sock and closing then
       self:once('close',function(self)
@@ -101,22 +114,21 @@ local new = function()
     closing = false
     local ok,err = sock:connect(ip,port)
     if ok or err == 'already connected' then
-      read()
-      write()
-      self:emit('connect',self)
+      on_connect()
     elseif err == 'timeout' or err == 'Operation already in progress' then
       watchers.connect = ev.IO.new(function(loop,io)
-          io:stop(loop)
-          watchers.connect = nil
-          read()
-          write()
-          self:emit('connect',self)
+          local ok,err = sock:connect(ip,port)
+          if ok or err == 'already connected' then
+            io:stop(loop)
+            watchers.connect = nil
+            on_connect()
+          else
+            on_error(err)
+          end
         end,sock:getfd(),ev.WRITE)
       watchers.connect:start(loop)
     else
-      self:emit('error',err)
-      self:emit('close')
-      self:destroy()
+      on_error(err)
     end
   end
   
@@ -125,18 +137,30 @@ local new = function()
       pending = pending..data
     else
       pending = data
-      watchers.write:start(loop)
+      if connecting then
+        self:once('connect',function()
+            watchers.write:start(loop)
+          end)
+      elseif connected then
+        watchers.write:start(loop)
+      else
+        self:emit('error',err)
+        self:emit('close')
+        self:destroy()
+      end
     end
+    return self
   end
   
   self.fin = function()
     if pending then
-      self:once('drain',function()
+      self:once('_drain',function()
           sock:shutdown('send')
         end)
     else
       sock:shutdown('send')
     end
+    return self
   end
   
   self.destroy = function()
@@ -159,7 +183,18 @@ local new = function()
   
   self.set_timeout = function() end
   self.set_keepalive = function() end
-  self.set_nodelay = function() end
+  self.set_nodelay = function(_,enable)
+    if connecting then
+      self:once('connect',function()
+          sock:setoption('tcp-nodelay',enable)
+        end)
+    elseif connected then
+      sock:setoption('tcp-nodelay',enable)
+    else
+      self:emit('error','socket closed')
+    end
+    return self
+  end
   return self
 end
 

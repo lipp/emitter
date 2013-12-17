@@ -55,29 +55,6 @@ describe('The emitter module',function()
             i:emit('foo')
           end)
         
-        it('emitter.next_tick works',function(done)
-            emitter.next_tick(function()
-                i:emit('foo','test',123)
-              end)
-            i:on('foo',async(function(a,b)
-                  assert.is_equal(a,'test')
-                  assert.is_equal(b,123)
-                  done()
-              end))
-          end)
-        
-        it('the call context for next_tick and on callbacks is different',function(done)
-            local s = 1
-            emitter.next_tick(function()
-                i:emit('foo')
-              end)
-            i:on('foo',async(function()
-                  assert.is_equal(s,2)
-                  done()
-              end))
-            s = 2
-          end)
-        
         it('once is really called once',function(done)
             local count = 0
             i:once('bar',async(function()

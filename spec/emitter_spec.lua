@@ -1,5 +1,3 @@
-setloop('ev')
-
 describe('The emitter module',function()
     local emitter = require'emitter'
     it('provides new method',function()

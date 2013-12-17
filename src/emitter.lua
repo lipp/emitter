@@ -1,41 +1,3 @@
-local ev = require'ev'
-
-local tinsert = table.insert
-local tremove = table.remove
-
-local create_next_tick = function(loop)
-  if ev.Idle then
-    local on_idle
-    local idle_io = ev.Idle.new(
-      function(loop,idle_io)
-        idle_io:stop(loop)
-        on_idle()
-      end)
-    return function(f)
-      on_idle = f
-      idle_io:start(loop)
-    end
-  else
-    local eps = 2^-40
-    local once
-    local on_timeout
-    local timer_io = ev.Timer.new(
-      function(loop,timer_io)
-        once = true
-        timer_io:stop(loop)
-        on_timeout()
-      end,eps,eps)
-    return function(f)
-      on_timeout = f
-      if once then
-        timer_io:again(loop)
-      else
-        timer_io:start(loop)
-      end
-    end
-  end
-end
-
 local new = function()
   local self = {}
   local listeners = {}
@@ -115,5 +77,4 @@ end
 
 return {
   new = new,
-  next_tick = create_next_tick(ev.Loop.default),
 }

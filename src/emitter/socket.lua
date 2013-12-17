@@ -152,8 +152,11 @@ local new = function()
     return self
   end
   
-  self.fin = function()
-    if pending then
+  self.fin = function(_,data)
+    if pending or data then
+      if data then
+        self:write(data)
+      end
       self:once('_drain',function()
           sock:shutdown('send')
         end)

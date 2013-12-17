@@ -6,12 +6,25 @@ local new = function()
   local listeners = {}
   local max_listeners = 10
   
+  self.set_max_listeners = function(_,max)
+    max_listeners = max
+  end
+  
+  self.listeners = function(_,event)
+    local l = {}
+    for i,listener in ipairs(listeners[event] or {}) do
+      l[i] = listener
+    end
+    return l
+  end
+  
   self.add_listener = function(_,event,listener)
     listeners[event] = listeners[event] or {}
-    if #listeners[event] > max_listeners then
+    if #listeners[event] > max_listeners and max_listners ~= 0 then
       error('max_listeners limit reached for event '..event)
     end
     tinsert(listeners[event],listener)
+    self:emit('new_listener',event,listener)
     return self
   end
   
@@ -22,6 +35,7 @@ local new = function()
       for i,listener in ipairs(listeners[event]) do
         if listener == oldlistener then
           tremove(listeners[event],i)
+          self:emit('remove_listener',event,listener)
           return self
         end
       end
@@ -30,7 +44,11 @@ local new = function()
   end
   
   local remove_all_listeners_for_event = function(event)
+    local listenersbak = listeners[event] or {}
     listeners[event] = nil
+    for _,listener in ipairs(listenersbak) do
+      self:emit('remove_listener',event,listener)
+    end
   end
   
   self.remove_all_listeners = function(_,event)
@@ -66,6 +84,7 @@ local new = function()
       for i=1,#listeners do
         local ok,err = pcall(emit_listeners[i],...)
         if not ok then
+          self:emit('error',err)
           print('error in listener',err)
         end
       end

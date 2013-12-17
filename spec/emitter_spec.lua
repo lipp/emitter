@@ -71,5 +71,20 @@ describe('The emitter module',function()
             i:emit('bar',1)
             i:emit('bar',2)
           end)
+        
+        it('once can be canceled',function(done)
+            local entered
+            local once_cb = async(function()
+                entered = true
+              end)
+            i:once('bar',once_cb)
+            i:on('bar',async(function()
+                  assert.is_nil(entered)
+                  done()
+              end))
+            i:remove_listener('bar',once_cb)
+            i:emit('bar')
+          end)
+        
       end)
   end)

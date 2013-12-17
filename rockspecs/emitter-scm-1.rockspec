@@ -6,7 +6,7 @@ source = {
 }
 
 description = {
-  summary = "Node.js inspired integration of lua-ev and sockets,etc",
+  summary = "Lua equivalent to node.js EventEmitter",
   homepage = "http://github.com/lipp/emitter",
   license = "MIT/X11",
   detailed = ""
@@ -14,8 +14,6 @@ description = {
 
 dependencies = {
   "lua >= 5.1",
-  "luasocket",
-  "lua-ev",
 }
 
 build = {
@@ -23,7 +21,6 @@ build = {
   install = {
     lua = {
       ['emitter'] = 'src/emitter.lua',
-      ['emitter.socket'] = 'src/emitter/socket.lua',
     }
   }
 }

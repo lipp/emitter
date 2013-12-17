@@ -84,5 +84,41 @@ describe('The emitter module',function()
             i:emit('bar')
           end)
         
+        it('remove_all_listeners works for a specific event',function(done)
+            local entered = 0
+            i:on('foo',async(function()
+                  entered = entered + 1
+              end))
+            i:on('foo',async(function()
+                  entered = entered + 1
+              end))
+            i:on('bar',async(function()
+                  assert.is_equal(entered,0)
+                  done()
+              end))
+            i:remove_all_listeners('foo')
+            i:emit('foo')
+            i:emit('bar')
+          end)
+        
+        it('remove_all_listeners works for all events',function(done)
+            local entered = 0
+            i:on('foo',async(function()
+                  entered = entered + 1
+              end))
+            i:on('foo',async(function()
+                  entered = entered + 1
+              end))
+            i:on('bar',async(function()
+                  entered = entered + 1
+                  --                  done()
+              end))
+            i:remove_all_listeners()
+            i:emit('foo')
+            i:emit('bar')
+            assert.is_equal(entered,0)
+            done()
+          end)
+        
       end)
   end)

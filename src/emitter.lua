@@ -1,3 +1,6 @@
+local tinsert = table.insert
+local tremove = table.remove
+
 local new = function()
   local self = {}
   local listeners = {}
@@ -27,9 +30,7 @@ local new = function()
   end
   
   local remove_all_listeners_for_event = function(event)
-    for _,listener in ipairs(listeners[event] or {}) do
-      self:remove_listener(listener)
-    end
+    listeners[event] = nil
   end
   
   self.remove_all_listeners = function(_,event)
